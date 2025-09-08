@@ -18,11 +18,6 @@ use fec\helpers\CRequest;
 .checker{float:left;}
 .dialog .pageContent {background:none;}
 .dialog .pageContent .pageFormContent{background:none;}
-.carousel-config-section {margin: 10px 0;}
-.carousel-item {margin-bottom: 15px; padding: 10px; border: 1px solid #eee;}
-.carousel-item label {display: block; margin-bottom: 5px; font-weight: bold;}
-.carousel-item input[type="file"] {margin-bottom: 5px;}
-.carousel-item input[type="text"] {width: 300px; padding: 5px;}
 </style>
 
 <div class="pageContent">
@@ -38,30 +33,6 @@ use fec\helpers\CRequest;
 				</fieldset>
 				<?= $lang_attr ?>
 				<?= $textareas ?>
-				
-				<!-- 首页轮播图配置 -->
-				<fieldset class="carousel-config-section">
-					<legend style="color:#cc0000"><?= Yii::$service->page->translate->__('Apphtml5 Home Carousel Config') ?></legend>
-					<div>
-						<div class="carousel-item">
-							<label for="carousel_image_1"><?= Yii::$service->page->translate->__('Carousel Image') ?> 1:</label>
-							<input type="file" name="carousel_image_1" id="carousel_image_1" accept="image/*">
-							<input type="text" name="carousel_link_1" placeholder="<?= Yii::$service->page->translate->__('Link URL (Optional)') ?>" style="margin-top: 5px;">
-						</div>
-						
-						<div class="carousel-item">
-							<label for="carousel_image_2"><?= Yii::$service->page->translate->__('Carousel Image') ?> 2:</label>
-							<input type="file" name="carousel_image_2" id="carousel_image_2" accept="image/*">
-							<input type="text" name="carousel_link_2" placeholder="<?= Yii::$service->page->translate->__('Link URL (Optional)') ?>" style="margin-top: 5px;">
-						</div>
-						
-						<div class="carousel-item">
-							<label for="carousel_image_3"><?= Yii::$service->page->translate->__('Carousel Image') ?> 3:</label>
-							<input type="file" name="carousel_image_3" id="carousel_image_3" accept="image/*">
-							<input type="text" name="carousel_link_3" placeholder="<?= Yii::$service->page->translate->__('Link URL (Optional)') ?>" style="margin-top: 5px;">
-						</div>
-					</div>
-				</fieldset>
 				
 				<fieldset id="fieldset_table_qbe">
 					<legend style="color:#cc0000"><?= Yii::$service->page->translate->__('Help') ?></legend>

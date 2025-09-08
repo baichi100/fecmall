@@ -21,17 +21,15 @@ class Apphtml5homeController extends ConfigController
     
     public function actionManager()
     {
-        $data = $this->getBlock()->getLastData();
+        $data = $this->getBlock('manager')->getLastData();
         return $this->render($this->action->id, $data);
     }
     
     
     public function actionManagersave()
     {
-        
-        $primaryKey = Yii::$service->customer->getPrimaryKey();
-        
-        $data = $this->getBlock('manager')->save();
+        // 明确指定使用manager block
+        return $this->getBlock('manager')->save();
     }
     
 }
