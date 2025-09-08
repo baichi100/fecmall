@@ -213,20 +213,11 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
     }
     
     /**
-     * 处理文件上传
+     * 处理文件上传 - 使用FecShop标准的图片上传服务
      */
     protected function handleFileUpload($fileInfo, $mediaType)
     {
         try {
-            // 设置上传目录到appimage
-            $uploadDir = Yii::getAlias('@appimage/common/media/carousel/');
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            
-            // 获取文件扩展名
-            $extension = pathinfo($fileInfo['name'], PATHINFO_EXTENSION);
-            
             // 验证文件类型
             $allowedTypes = [];
             if ($mediaType === 'image') {
@@ -235,31 +226,82 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                 $allowedTypes = ['mp4', 'webm', 'ogg', 'avi', 'mov'];
             }
             
+            $extension = pathinfo($fileInfo['name'], PATHINFO_EXTENSION);
             if (!in_array(strtolower($extension), $allowedTypes)) {
                 Yii::$service->helper->errors->add('Invalid file type for ' . $mediaType);
                 return false;
             }
             
-            // 生成唯一文件名
-            $fileName = 'carousel_' . time() . '_' . uniqid() . '.' . $extension;
-            $filePath = $uploadDir . $fileName;
+            // 设置图片服务的上传目录为carousel
+            $originalImageFloder = Yii::$service->image->imageFloder;
+            Yii::$service->image->imageFloder = 'media/carousel';
             
-            // 移动上传的文件到appimage目录
-            if (move_uploaded_file($fileInfo['tmp_name'], $filePath)) {
-                // 返回完整的URL路径，用于存储到数据库
-                $baseUrl = Yii::$app->request->hostInfo;
-                $mediaUrl = $baseUrl . '/appimage/common/media/carousel/' . $fileName;
-                
+            // 对于视频文件，我们需要特殊处理，因为image服务主要处理图片
+            if ($mediaType === 'video') {
+                // 直接使用自定义上传逻辑处理视频
+                $result = $this->handleVideoUpload($fileInfo);
+                // 恢复原始设置
+                Yii::$service->image->imageFloder = $originalImageFloder;
+                return $result;
+            }
+            
+            // 使用FecShop标准的图片上传服务
+            list($imgSavedRelativePath, $imgUrl, $imgPath) = Yii::$service->image->saveUploadImg($fileInfo);
+            
+            // 恢复原始设置
+            Yii::$service->image->imageFloder = $originalImageFloder;
+            
+            if ($imgSavedRelativePath) {
                 // 记录上传成功的日志
-                Yii::info('File uploaded successfully: ' . $mediaUrl, 'apphtml5home');
-                
-                return $mediaUrl;
+                Yii::info('Image uploaded successfully: ' . $imgUrl, 'apphtml5home');
+                return $imgUrl;
             } else {
-                Yii::$service->helper->errors->add('Failed to upload file');
+                Yii::$service->helper->errors->add('Failed to upload image');
                 return false;
             }
-        } catch (Exception $e) {
+            
+        } catch (\Exception $e) {
+            // 恢复原始设置
+            if (isset($originalImageFloder)) {
+                Yii::$service->image->imageFloder = $originalImageFloder;
+            }
             Yii::$service->helper->errors->add('Upload error: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 处理视频文件上传
+     */
+    protected function handleVideoUpload($fileInfo)
+    {
+        try {
+            // 设置上传目录
+            $uploadDir = Yii::getAlias('@appimage/common/media/carousel/');
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // 生成唯一文件名
+            $extension = pathinfo($fileInfo['name'], PATHINFO_EXTENSION);
+            $fileName = 'carousel_video_' . time() . '_' . uniqid() . '.' . $extension;
+            $filePath = $uploadDir . $fileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($fileInfo['tmp_name'], $filePath)) {
+                // 返回URL路径
+                $videoUrl = Yii::$service->image->getUrlByRelativePath('/media/carousel/' . $fileName);
+                
+                // 记录上传成功的日志
+                Yii::info('Video uploaded successfully: ' . $videoUrl, 'apphtml5home');
+                
+                return $videoUrl;
+            } else {
+                Yii::$service->helper->errors->add('Failed to upload video');
+                return false;
+            }
+        } catch (\Exception $e) {
+            Yii::$service->helper->errors->add('Video upload error: ' . $e->getMessage());
             return false;
         }
     }

@@ -65,6 +65,7 @@ use fec\helpers\CRequest;
 									<!-- 轮播项将通过JavaScript动态添加 -->
 								</div>
 								<button type="button" class="add-carousel-item" onclick="addCarouselItem()"><?= Yii::$service->page->translate->__('Add Carousel Item') ?></button>
+				<button type="button" class="add-carousel-item" onclick="testFileUpload()" style="background: #2196F3; margin-left: 10px;">测试文件上传</button>
 							</div>
 						</div>
 					</div>
@@ -108,11 +109,13 @@ function addCarouselItem(mediaType = 'image') {
         </div>
         <div class="media-input image-input" style="` + (mediaType !== 'image' ? 'display:none;' : '') + `">
             <label><?= Yii::$service->page->translate->__('Image') ?>:</label>
-            <input type="file" name="carousel_image_` + carouselItemIndex + `" accept="image/*">
+            <input type="file" name="carousel_image_` + carouselItemIndex + `" accept="image/*" onchange="handleFileSelect(this)">
+            <div class="file-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
         </div>
         <div class="media-input video-input" style="` + (mediaType !== 'video' ? 'display:none;' : '') + `">
             <label><?= Yii::$service->page->translate->__('Video') ?>:</label>
-            <input type="file" name="carousel_video_` + carouselItemIndex + `" accept="video/*">
+            <input type="file" name="carousel_video_` + carouselItemIndex + `" accept="video/*" onchange="handleFileSelect(this)">
+            <div class="file-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
         </div>
         <div>
             <label><?= Yii::$service->page->translate->__('Link URL (Optional)') ?>:</label>
@@ -143,6 +146,36 @@ function toggleMediaType(radio) {
     } else if (radio.value === 'video') {
         imageInput.style.display = 'none';
         videoInput.style.display = 'block';
+    }
+}
+
+// 处理文件选择事件
+function handleFileSelect(fileInput) {
+    var fileInfoDiv = fileInput.parentNode.querySelector('.file-info');
+    
+    if (fileInput.files && fileInput.files.length > 0) {
+        var file = fileInput.files[0];
+        var fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+        var fileName = file.name;
+        
+        fileInfoDiv.innerHTML = '<span style="color: #4CAF50;">✓ 已选择文件: ' + fileName + ' (' + fileSize + ' MB)</span>';
+        
+        console.log('File selected:', {
+            name: fileName,
+            size: fileSize + ' MB',
+            type: file.type,
+            inputName: fileInput.name
+        });
+        
+        // 验证文件类型
+        var isImage = file.type.startsWith('image/');
+        var isVideo = file.type.startsWith('video/');
+        
+        if (!isImage && !isVideo) {
+            fileInfoDiv.innerHTML = '<span style="color: #f44336;">⚠ 不支持的文件类型</span>';
+        }
+    } else {
+        fileInfoDiv.innerHTML = '';
     }
 }
 
@@ -206,6 +239,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 在表单提交前准备carousel_items数据
 function prepareFormData() {
+    // 检查是否有文件需要上传
+    var hasFiles = false;
+    var fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(function(input) {
+        if (input.files && input.files.length > 0) {
+            hasFiles = true;
+            console.log('Found file to upload:', input.name, input.files[0].name);
+        }
+    });
+    
+    if (hasFiles) {
+        console.log('Files detected, form will be submitted with multipart/form-data');
+    } else {
+        console.log('No files detected');
+    }
+    
     // 注意：我们不再需要创建隐藏的carousel_items字段
     // 因为后端现在直接从carousel_link_0, carousel_link_1等字段中收集数据
     return true;
@@ -236,6 +285,47 @@ function collectCarouselData() {
     });
     
     return carouselItems;
+}
+
+// 测试文件上传功能
+function testFileUpload() {
+    console.log('=== 文件上传测试开始 ===');
+    
+    // 检查表单设置
+    var form = document.querySelector('form');
+    console.log('表单enctype:', form.enctype);
+    console.log('表单method:', form.method);
+    console.log('表单action:', form.action);
+    
+    // 检查文件输入框
+    var fileInputs = document.querySelectorAll('input[type="file"]');
+    console.log('找到文件输入框数量:', fileInputs.length);
+    
+    var hasFiles = false;
+    fileInputs.forEach(function(input, index) {
+        console.log('文件输入框 ' + (index + 1) + ':', {
+            name: input.name,
+            accept: input.accept,
+            files: input.files.length
+        });
+        
+        if (input.files && input.files.length > 0) {
+            hasFiles = true;
+            console.log('  - 选中的文件:', input.files[0].name, input.files[0].size + ' bytes');
+        }
+    });
+    
+    if (!hasFiles) {
+        alert('请先选择要上传的文件，然后再点击测试按钮');
+        return;
+    }
+    
+    // 检查CSRF token
+    var csrfInput = document.querySelector('input[name="_csrf"]');
+    console.log('CSRF token存在:', !!csrfInput);
+    
+    console.log('=== 文件上传测试完成 ===');
+    alert('测试完成，请查看浏览器控制台获取详细信息');
 }
 </script>
 
