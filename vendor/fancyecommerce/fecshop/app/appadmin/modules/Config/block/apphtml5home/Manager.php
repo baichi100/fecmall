@@ -176,9 +176,32 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
             // 检查是否为轮播图链接参数
             if (preg_match('/^carousel_link_(\d+)$/', $key, $matches)) {
                 $index = $matches[1];
+                if (!isset($carouselItems[$index])) {
+                    $carouselItems[$index] = [];
+                }
                 $carouselItems[$index]['link'] = $value;
-                $carouselItems[$index]['mediaType'] = isset($request_param["carousel_media_type_$index"]) ? 
-                    $request_param["carousel_media_type_$index"] : 'image';
+            }
+            
+            // 检查是否为上传文件的URL参数
+            if (preg_match('/^carousel_(image|video)_(\d+)_url$/', $key, $matches)) {
+                $mediaType = $matches[1];
+                $index = $matches[2];
+                
+                if (!isset($carouselItems[$index])) {
+                    $carouselItems[$index] = [];
+                }
+                
+                $carouselItems[$index]['mediaUrl'] = $value;
+                $carouselItems[$index]['mediaType'] = $mediaType;
+            }
+            
+            // 检查媒体类型参数
+            if (preg_match('/^carousel_media_type_(\d+)$/', $key, $matches)) {
+                $index = $matches[1];
+                if (!isset($carouselItems[$index])) {
+                    $carouselItems[$index] = [];
+                }
+                $carouselItems[$index]['mediaType'] = $value;
             }
         }
         
@@ -205,6 +228,11 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
             }
         }
         
+        // 清理空项并重新索引数组
+        $carouselItems = array_filter($carouselItems, function($item) {
+            return !empty($item['mediaUrl']);
+        });
+        
         // 按索引排序
         ksort($carouselItems);
         
@@ -215,7 +243,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
     /**
      * 处理文件上传 - 使用FecShop标准的图片上传服务
      */
-    protected function handleFileUpload($fileInfo, $mediaType)
+    public function handleFileUpload($fileInfo, $mediaType)
     {
         try {
             // 验证文件类型
@@ -232,76 +260,32 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                 return false;
             }
             
-            // 设置图片服务的上传目录为carousel
-            $originalImageFloder = Yii::$service->image->imageFloder;
-            Yii::$service->image->imageFloder = 'media/carousel';
-            
-            // 对于视频文件，我们需要特殊处理，因为image服务主要处理图片
-            if ($mediaType === 'video') {
-                // 直接使用自定义上传逻辑处理视频
-                $result = $this->handleVideoUpload($fileInfo);
-                // 恢复原始设置
-                Yii::$service->image->imageFloder = $originalImageFloder;
-                return $result;
-            }
-            
-            // 使用FecShop标准的图片上传服务
-            list($imgSavedRelativePath, $imgUrl, $imgPath) = Yii::$service->image->saveUploadImg($fileInfo);
-            
-            // 恢复原始设置
-            Yii::$service->image->imageFloder = $originalImageFloder;
-            
-            if ($imgSavedRelativePath) {
-                // 记录上传成功的日志
-                Yii::info('Image uploaded successfully: ' . $imgUrl, 'apphtml5home');
-                return $imgUrl;
-            } else {
-                Yii::$service->helper->errors->add('Failed to upload image');
-                return false;
-            }
-            
-        } catch (\Exception $e) {
-            // 恢复原始设置
-            if (isset($originalImageFloder)) {
-                Yii::$service->image->imageFloder = $originalImageFloder;
-            }
-            Yii::$service->helper->errors->add('Upload error: ' . $e->getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * 处理视频文件上传
-     */
-    protected function handleVideoUpload($fileInfo)
-    {
-        try {
-            // 设置上传目录
+            // 创建carousel目录
             $uploadDir = Yii::getAlias('@appimage/common/media/carousel/');
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
             
             // 生成唯一文件名
-            $extension = pathinfo($fileInfo['name'], PATHINFO_EXTENSION);
-            $fileName = 'carousel_video_' . time() . '_' . uniqid() . '.' . $extension;
+            $prefix = ($mediaType === 'image') ? 'carousel_image_' : 'carousel_video_';
+            $fileName = $prefix . time() . '_' . uniqid() . '.' . $extension;
             $filePath = $uploadDir . $fileName;
             
             // 移动上传的文件
             if (move_uploaded_file($fileInfo['tmp_name'], $filePath)) {
-                // 返回URL路径
-                $videoUrl = Yii::$service->image->getUrlByRelativePath('/media/carousel/' . $fileName);
+                // 返回完整的URL路径，包含域名
+                $fileUrl = Yii::$service->image->getUrlByRelativePath('/media/carousel/' . $fileName);
                 
                 // 记录上传成功的日志
-                Yii::info('Video uploaded successfully: ' . $videoUrl, 'apphtml5home');
+                Yii::info('File uploaded successfully: ' . $fileUrl, 'apphtml5home');
                 
-                return $videoUrl;
+                return $fileUrl;
             } else {
-                Yii::$service->helper->errors->add('Failed to upload video');
+                Yii::$service->helper->errors->add('Failed to upload file');
                 return false;
             }
         } catch (\Exception $e) {
-            Yii::$service->helper->errors->add('Video upload error: ' . $e->getMessage());
+            Yii::$service->helper->errors->add('Upload error: ' . $e->getMessage());
             return false;
         }
     }

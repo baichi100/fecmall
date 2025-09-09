@@ -63,6 +63,12 @@ class AppadminController extends Controller
     public function beforeAction($action)
     {
         if (parent::beforeAction($action)) {
+            // 检查是否有白名单设置，如果有且当前动作在白名单中，则跳过权限验证
+            if (isset($this->whitelist) && in_array($action->id, $this->whitelist)) {
+                Yii::$service->admin->systemLog->save();
+                return true;
+            }
+            
             $moduleId = Yii::$app->controller->module->id;
             $controllerId = $this->id;
             $actionId = $this->action->id;

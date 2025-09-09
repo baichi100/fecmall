@@ -65,7 +65,7 @@ use fec\helpers\CRequest;
 									<!-- 轮播项将通过JavaScript动态添加 -->
 								</div>
 								<button type="button" class="add-carousel-item" onclick="addCarouselItem()"><?= Yii::$service->page->translate->__('Add Carousel Item') ?></button>
-				<button type="button" class="add-carousel-item" onclick="testFileUpload()" style="background: #2196F3; margin-left: 10px;">测试文件上传</button>
+
 							</div>
 						</div>
 					</div>
@@ -173,10 +173,58 @@ function handleFileSelect(fileInput) {
         
         if (!isImage && !isVideo) {
             fileInfoDiv.innerHTML = '<span style="color: #f44336;">⚠ 不支持的文件类型</span>';
+        } else {
+            // 自动触发文件上传
+            uploadFile(fileInput, file, fileInfoDiv);
         }
     } else {
         fileInfoDiv.innerHTML = '';
     }
+}
+
+// 上传文件函数
+function uploadFile(fileInput, file, fileInfoDiv) {
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('media_type', file.type.startsWith('image/') ? 'image' : 'video');
+    formData.append('input_name', fileInput.name);
+    formData.append("<?= Yii::$app->request->csrfParam ?>", "<?= Yii::$app->request->csrfToken ?>");
+    
+    // 显示上传进度
+    fileInfoDiv.innerHTML = '<span style="color: #FF9800;">↑ 正在上传...</span>';
+    
+    // 发送AJAX请求上传文件
+    $.ajax({
+        url: '<?= Yii::$app->urlManager->createUrl("config/apphtml5home/fileupload") ?>',
+        type: 'POST',
+        data: formData,
+        async: true,
+        dataType: 'json',
+        timeout: 80000,
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function(data, textStatus) {
+            if (data.return_status == "success") {
+                fileInfoDiv.innerHTML = '<span style="color: #4CAF50;">✓ 上传成功</span>' +
+                    '<input type="hidden" name="' + data.input_name + '_url" value="' + data.file_url + '">' +
+                    '<p style="margin: 5px 0; font-size: 12px; color: #666;">URL: ' + data.file_url + '</p>';
+                
+                // 如果是图片，显示预览
+                if (data.media_type === 'image') {
+                    fileInfoDiv.innerHTML += '<img src="' + data.file_url + '" style="max-width: 100px; max-height: 60px; margin-top: 5px; border: 1px solid #ddd; border-radius: 3px;" alt="预览">';
+                } else if (data.media_type === 'video') {
+                    fileInfoDiv.innerHTML += '<video style="max-width: 100px; max-height: 60px; margin-top: 5px; border: 1px solid #ddd; border-radius: 3px;" controls><source src="' + data.file_url + '" type="video/mp4">您的浏览器不支持视频播放</video>';
+                }
+            } else {
+                fileInfoDiv.innerHTML = '<span style="color: #f44336;">✗ 上传失败: ' + data.error_message + '</span>';
+            }
+        },
+        error: function() {
+            fileInfoDiv.innerHTML = '<span style="color: #f44336;">✗ 上传出错</span>';
+            alert('<?= Yii::$service->page->translate->__('Upload Error') ?>');
+        }
+    });
 }
 
 // 页面加载完成后初始化
