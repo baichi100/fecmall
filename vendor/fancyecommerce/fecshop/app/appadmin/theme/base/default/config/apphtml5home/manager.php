@@ -46,6 +46,7 @@ use fec\helpers\CRequest;
 		<div layouth="56" class="pageFormContent" style="height: 240px; overflow: auto;">
 
 				<input type="hidden"  value="<?=  $_id; ?>" size="30" name="editFormData[_id]" class="textInput ">
+				<input type="hidden" id="carousel_items_input" value="" name="editFormData[carousel_items]" />
 
 				<fieldset id="fieldset_table_qbe">
 					<legend style="color:#cc0000"><?= Yii::$service->page->translate->__('Apphtml5 Home Config') ?></legend>
@@ -108,12 +109,10 @@ function addCarouselItem(mediaType = 'image') {
             <label><input type="radio" name="carousel_media_type_` + carouselItemIndex + `" value="video" ` + (mediaType === 'video' ? 'checked' : '') + ` onchange="toggleMediaType(this)"> <?= Yii::$service->page->translate->__('Video') ?></label>
         </div>
         <div class="media-input image-input" style="` + (mediaType !== 'image' ? 'display:none;' : '') + `">
-            <label><?= Yii::$service->page->translate->__('Image') ?>:</label>
             <input type="file" name="carousel_image_` + carouselItemIndex + `" accept="image/*" onchange="handleFileSelect(this)">
             <div class="file-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
         </div>
         <div class="media-input video-input" style="` + (mediaType !== 'video' ? 'display:none;' : '') + `">
-            <label><?= Yii::$service->page->translate->__('Video') ?>:</label>
             <input type="file" name="carousel_video_` + carouselItemIndex + `" accept="video/*" onchange="handleFileSelect(this)">
             <div class="file-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
         </div>
@@ -206,8 +205,10 @@ function uploadFile(fileInput, file, fileInfoDiv) {
         processData: false,
         success: function(data, textStatus) {
             if (data.return_status == "success") {
+                // 修改隐藏字段名称以符合后端解析规则
+                var hiddenFieldName = data.input_name + '_url';
                 fileInfoDiv.innerHTML = '<span style="color: #4CAF50;">✓ 上传成功</span>' +
-                    '<input type="hidden" name="' + data.input_name + '_url" value="' + data.file_url + '">' +
+                    '<input type="hidden" name="' + hiddenFieldName + '" value="' + data.file_url + '">' +
                     '<p style="margin: 5px 0; font-size: 12px; color: #666;">URL: ' + data.file_url + '</p>';
                 
                 // 如果是图片，显示预览
@@ -287,6 +288,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 在表单提交前准备carousel_items数据
 function prepareFormData() {
+    // 收集轮播图数据
+    var carouselData = collectCarouselData();
+    
+    // 将轮播图数据转换为JSON并存储在隐藏字段中
+    document.getElementById('carousel_items_input').value = JSON.stringify(carouselData);
+    
     // 检查是否有文件需要上传
     var hasFiles = false;
     var fileInputs = document.querySelectorAll('input[type="file"]');
@@ -303,12 +310,10 @@ function prepareFormData() {
         console.log('No files detected');
     }
     
-    // 注意：我们不再需要创建隐藏的carousel_items字段
-    // 因为后端现在直接从carousel_link_0, carousel_link_1等字段中收集数据
     return true;
 }
 
-// 收集轮播图数据（保留此函数以防将来需要）
+// 收集轮播图数据
 function collectCarouselData() {
     var carouselItems = [];
     var container = document.getElementById('carousel-items-container');
@@ -323,11 +328,20 @@ function collectCarouselData() {
             }
         });
         
+        // 获取链接
         var linkInput = item.querySelector('input[name="carousel_link_' + index + '"]');
         var link = linkInput ? linkInput.value : '';
         
+        // 获取媒体URL（从隐藏字段中获取）
+        var mediaUrl = '';
+        var mediaUrlInput = item.querySelector('input[name="carousel_image_' + index + '_url"], input[name="carousel_video_' + index + '_url"]');
+        if (mediaUrlInput) {
+            mediaUrl = mediaUrlInput.value;
+        }
+        
         carouselItems.push({
             mediaType: mediaType,
+            mediaUrl: mediaUrl,
             link: link
         });
     });

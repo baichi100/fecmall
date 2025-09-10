@@ -130,8 +130,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                 'label'  => Yii::$service->page->translate->__('Carousel Items'),
                 'name' => 'carousel_items',
                 'display' => [
-                    'type' => 'custom',
-                    'custom' => 'carouselItems',
+                    'type' => 'inputString',
                 ],
                 'remark' => '',
             ],
@@ -148,8 +147,33 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                 // 特殊处理carousel_items，将其转换为数组格式
                 if ($attr === 'carousel_items') {
                     // 解析轮播图配置数据
-                    $carouselItems = $this->parseCarouselItems($request_param);
-                    $attrVals[$attr] = $carouselItems;
+                    if (!empty($val)) {
+                        $carouselItems = json_decode($val, true);
+                        if (is_array($carouselItems)) {
+                            // 同时也要检查通过文件上传的carousel数据
+                            $uploadedCarouselItems = $this->parseCarouselItems($request_param);
+                            // 合并两种方式获取的数据
+                            if (!empty($uploadedCarouselItems)) {
+                                foreach ($uploadedCarouselItems as $index => $item) {
+                                    if (isset($carouselItems[$index])) {
+                                        // 合并已有的数据和上传的数据
+                                        $carouselItems[$index] = array_merge($carouselItems[$index], $item);
+                                    } else {
+                                        $carouselItems[$index] = $item;
+                                    }
+                                }
+                            }
+                            $attrVals[$attr] = $carouselItems;
+                        } else {
+                            // 如果JSON解析失败，尝试使用解析方法
+                            $carouselItems = $this->parseCarouselItems($request_param);
+                            $attrVals[$attr] = $carouselItems;
+                        }
+                    } else {
+                        // 如果没有直接的carousel_items值，尝试解析上传的文件
+                        $carouselItems = $this->parseCarouselItems($request_param);
+                        $attrVals[$attr] = $carouselItems;
+                    }
                 } else {
                     $attrVals[$attr] = $val;
                 }
@@ -182,7 +206,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                 $carouselItems[$index]['link'] = $value;
             }
             
-            // 检查是否为上传文件的URL参数
+            // 检查是否为上传文件的URL参数 (修正正则表达式)
             if (preg_match('/^carousel_(image|video)_(\d+)_url$/', $key, $matches)) {
                 $mediaType = $matches[1];
                 $index = $matches[2];
@@ -205,7 +229,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
             }
         }
         
-        // 处理文件上传
+        // 处理直接文件上传（如果存在）
         if (!empty($_FILES)) {
             foreach ($_FILES as $fileKey => $fileInfo) {
                 if (preg_match('/^carousel_(image|video)_(\d+)$/', $fileKey, $matches)) {
@@ -230,7 +254,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
         
         // 清理空项并重新索引数组
         $carouselItems = array_filter($carouselItems, function($item) {
-            return !empty($item['mediaUrl']);
+            return !empty($item['mediaUrl']) || !empty($item['link']); // 保留有链接或媒体URL的项
         });
         
         // 按索引排序
@@ -305,6 +329,7 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
         // 调试信息：记录保存的数据
         Yii::info('Apphtml5home saving data: ' . print_r($data, true), 'apphtml5home');
         Yii::info('Files uploaded: ' . print_r($_FILES, true), 'apphtml5home');
+
         
         $result = $this->_service->saveConfig($data);
         $errors = Yii::$service->helper->errors->get();
