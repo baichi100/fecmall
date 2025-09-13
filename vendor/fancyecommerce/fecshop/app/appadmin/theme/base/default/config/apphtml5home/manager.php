@@ -241,47 +241,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // 加载已保存的轮播图数据
- function loadExistingCarouselItems() {
-     // 这里需要从后端获取已保存的轮播图数据
-     // 由于这是在PHP模板中，我们可以通过PHP变量传递数据
-     <?php if (!empty($carouselItems) && is_array($carouselItems)): ?>
-         var existingItems = <?= json_encode($carouselItems) ?>;
-         existingItems.forEach(function(item, index) {
+function loadExistingCarouselItems() {
+    // 修复：正确获取轮播图数据，不通过View::block属性
+    <?php 
+    // 确保carouselItems变量被正确传递
+    if (isset($carouselItems) && !empty($carouselItems) && is_array($carouselItems)): ?>
+        var existingItems = <?= json_encode($carouselItems) ?>;
+        // 重置计数器以确保新添加的项目索引正确
+        carouselItemIndex = 0;
+        
+        // 清空容器并重新添加所有项目
+        var container = document.getElementById('carousel-items-container');
+        container.innerHTML = '';
+        
+        // 按顺序添加每个轮播项
+        existingItems.forEach(function(item, index) {
+            // 添加轮播项
             addCarouselItem(item.mediaType || 'image');
-            var container = document.getElementById('carousel-items-container');
+            
+            // 获取最新添加的轮播项
             var itemDiv = container.children[container.children.length - 1];
             
             // 设置链接值
             if (item.link) {
-                var linkInput = itemDiv.querySelector('input[name="carousel_link_' + (carouselItemIndex - 1) + '"]');
+                var linkInput = itemDiv.querySelector('input[name="carousel_link_' + index + '"]');
                 if (linkInput) linkInput.value = item.link;
             }
             
             // 显示已上传的媒体文件信息
-             if (item.mediaUrl) {
-                 var mediaInfo = document.createElement('div');
-                 mediaInfo.className = 'existing-media-info';
-                 
-                 // 创建预览和信息显示
-                 var infoHtml = '<p style="color: #4CAF50; font-size: 12px; margin: 5px 0;">已上传文件</p>';
-                 
-                 if (item.mediaType === 'image') {
-                     infoHtml += '<img src="' + item.mediaUrl + '" style="max-width: 100px; max-height: 60px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px;" alt="轮播图预览">';
-                 } else if (item.mediaType === 'video') {
-                     infoHtml += '<video style="max-width: 100px; max-height: 60px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px;" controls><source src="' + item.mediaUrl + '" type="video/mp4">您的浏览器不支持视频播放</video>';
-                 }
-                 
-                 infoHtml += '<p style="color: #666; font-size: 11px; margin: 2px 0; word-break: break-all;">URL: ' + item.mediaUrl + '</p>';
-                 mediaInfo.innerHTML = infoHtml;
-                 
-                 if (item.mediaType === 'image') {
-                     var imageInput = itemDiv.querySelector('.image-input');
-                     if (imageInput) imageInput.appendChild(mediaInfo);
-                 } else if (item.mediaType === 'video') {
-                     var videoInput = itemDiv.querySelector('.video-input');
-                     if (videoInput) videoInput.appendChild(mediaInfo);
-                 }
-             }
+            if (item.mediaUrl) {
+                var mediaInfo = document.createElement('div');
+                mediaInfo.className = 'existing-media-info';
+                
+                // 创建预览和信息显示
+                var infoHtml = '<p style="color: #4CAF50; font-size: 12px; margin: 5px 0;">已上传文件</p>';
+                
+                if (item.mediaType === 'image') {
+                    infoHtml += '<img src="' + item.mediaUrl + '" style="max-width: 100px; max-height: 60px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px;" alt="轮播图预览">';
+                } else if (item.mediaType === 'video') {
+                    infoHtml += '<video style="max-width: 100px; max-height: 60px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px;" controls><source src="' + item.mediaUrl + '" type="video/mp4">您的浏览器不支持视频播放</video>';
+                }
+                
+                infoHtml += '<p style="color: #666; font-size: 11px; margin: 2px 0; word-break: break-all;">URL: ' + item.mediaUrl + '</p>';
+                mediaInfo.innerHTML = infoHtml;
+                
+                if (item.mediaType === 'image') {
+                    var imageInput = itemDiv.querySelector('.image-input');
+                    if (imageInput) imageInput.appendChild(mediaInfo);
+                } else if (item.mediaType === 'video') {
+                    var videoInput = itemDiv.querySelector('.video-input');
+                    if (videoInput) videoInput.appendChild(mediaInfo);
+                }
+                
+                // 添加隐藏字段存储媒体URL
+                var hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'carousel_' + item.mediaType + '_' + index + '_url';
+                hiddenInput.value = item.mediaUrl;
+                itemDiv.appendChild(hiddenInput);
+            }
         });
     <?php endif; ?>
 }
