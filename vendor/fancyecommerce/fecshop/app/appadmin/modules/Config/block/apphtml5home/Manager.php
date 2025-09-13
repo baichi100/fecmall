@@ -215,6 +215,18 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                     $carouselItems[$index] = [];
                 }
                 
+                // 去掉图片或视频地址的域名部分，只保留相对路径
+                $parsedUrl = parse_url($value);
+                if (isset($parsedUrl['path'])) {
+                    $value = $parsedUrl['path'];
+                    if (isset($parsedUrl['query'])) {
+                        $value .= '?' . $parsedUrl['query'];
+                    }
+                    if (isset($parsedUrl['fragment'])) {
+                        $value .= '#' . $parsedUrl['fragment'];
+                    }
+                }
+                
                 $carouselItems[$index]['mediaUrl'] = $value;
                 $carouselItems[$index]['mediaType'] = $mediaType;
             }
@@ -244,6 +256,18 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
                             if (!isset($carouselItems[$index])) {
                                 $carouselItems[$index] = [];
                             }
+                            // 去掉上传结果的域名部分，只保留相对路径
+                            $parsedUrl = parse_url($uploadResult);
+                            if (isset($parsedUrl['path'])) {
+                                $uploadResult = $parsedUrl['path'];
+                                if (isset($parsedUrl['query'])) {
+                                    $uploadResult .= '?' . $parsedUrl['query'];
+                                }
+                                if (isset($parsedUrl['fragment'])) {
+                                    $uploadResult .= '#' . $parsedUrl['fragment'];
+                                }
+                            }
+                            
                             $carouselItems[$index]['mediaUrl'] = $uploadResult;
                             $carouselItems[$index]['mediaType'] = $mediaType;
                         }
@@ -361,6 +385,10 @@ class Manager extends AppadminbaseBlockEdit implements AppadminbaseBlockEditInte
         }
         $content = $this->_one['value'];
         if (is_array($content) && !empty($content) && isset($content[$name])) {
+            // 对于carousel_items，直接返回数组而不是处理成字符串
+            if ($name === 'carousel_items') {
+                return $content[$name];
+            }
             
             return $content[$name];
         }
